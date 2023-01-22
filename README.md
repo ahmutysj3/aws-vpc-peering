@@ -1,2 +1,4 @@
-# trace-aws-vpc-public
-Terraform Plan for AWS VPC Environment
+# trace-aws-tf
+AWS Terraform project
+
+- ongoing terraform lab in Amazon Web Services
