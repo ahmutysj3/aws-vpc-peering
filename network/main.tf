@@ -227,11 +227,11 @@ resource "aws_security_group_rule" "db_ingress" {
 } */
 
 # creates a route table for the hub untrusted subnet
-resource "aws_route_table" "hub_untrusted" {
-  for_each = {
-    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "hub"
-  }
-  vpc_id = aws_vpc.main[each.key].id
+resource "aws_route_table" "hub" {
+  for_each = aws_subnet.hub
+  vpc_id = aws_subnet.hub[each.key].vpc_id
+  
+  # each.key == "trusted" to only apply to hub_trusted_subnet
   dynamic "route" {
     iterator = vpc_rr
 
@@ -241,7 +241,7 @@ resource "aws_route_table" "hub_untrusted" {
         cidr        = aws_vpc.main[vpck].cidr_block,
         vpc_peer_id = aws_vpc_peering_connection.main[vpck].id
       }
-      if vpc.tags.type == "spoke"
+      if vpc.tags.type == "spoke" && each.key == "trusted"
     ]
 
     content {
@@ -250,15 +250,34 @@ resource "aws_route_table" "hub_untrusted" {
     }
   }
 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.hub.id
-  }
-
   tags = {
-    Name = "${each.key}_untrusted_main_rt"
+    Name = "hub_${each.key}_main_rt"
   }
 }
+
+  # each.key == "untrusted" to only apply to hub_untrusted_subnet
+  dynamic "route" {
+    iterator = vpc_rr
+
+    for_each = [
+      for vpck, vpc in aws_vpc.main :
+      {
+        cidr        = aws_vpc.main[vpck].cidr_block,
+        vpc_peer_id = aws_vpc_peering_connection.main[vpck].id
+      }
+      if vpc.tags.type == "spoke" && each.key == "untrusted"
+    ]
+
+    content {
+      cidr_block = "0.0.0.0/0"
+      gateway_id = aws_internet_gateway.hub.id
+  }
+}
+
+#
+#
+####
+// Note: Need to add another route pointing to pfsense instance once it is deployed
 
 # creates a route table for the hub trusted subnet
 resource "aws_route_table" "hub_trusted" {
