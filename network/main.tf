@@ -98,7 +98,7 @@ resource "aws_security_group" "allow_all" {
   }
 }
 
-# creates a default allow all in/out nacl in each VPC
+# creates a default allow all out/allow ssh in nacl in each VPC
 resource "aws_network_acl" "main" {
   for_each = aws_vpc.main
   vpc_id   = aws_vpc.main[each.key].id
@@ -113,7 +113,7 @@ resource "aws_network_acl" "main" {
   }
 
   ingress {
-    protocol   = "all"
+    protocol   = "tcp"
     rule_no    = 100
     action     = "allow"
     cidr_block = "0.0.0.0/0"
