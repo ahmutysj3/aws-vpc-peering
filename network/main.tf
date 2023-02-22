@@ -25,30 +25,16 @@ resource "aws_internet_gateway" "hub" {
 }
 
 # builds a subnet for inside interface of firewall
-resource "aws_subnet" "hub_trusted" {
-  #availability_zone       = data.aws_availability_zones.available.names[0]
+resource "aws_subnet" "hub" {
+  for_each = {"trusted" = 0,"untrusted" = 1,"mgmt" = 2}
   vpc_id                  = local.hub_id
-  cidr_block              = cidrsubnet(local.hub_cidr, 8, 0)
-  map_public_ip_on_launch = false
+  cidr_block              = cidrsubnet(local.hub_cidr, 8, each.value)
+  map_public_ip_on_launch = each.value < 1 ? false : true
   tags = {
-    Name     = "hub_trusted_subnet"
-    Security = "0"
-    Type     = "hub"
+    Name     = "hub_${each.key}_subnet"
   }
 }
 
-# builds a subnet for outside interface of firewall
-resource "aws_subnet" "hub_untrusted" {
-  #availability_zone       = data.aws_availability_zones.available.names[0]
-  vpc_id                  = local.hub_id
-  cidr_block              = cidrsubnet(local.hub_cidr, 8, 1)
-  map_public_ip_on_launch = false
-  tags = {
-    Name     = "hub_untrusted_subnet"
-    Security = "100"
-    type     = "hub"
-  }
-}
 
 # builds the spoke subnets based on inputs within var.spoke_subnets
 resource "aws_subnet" "spoke" {
@@ -240,12 +226,46 @@ resource "aws_security_group_rule" "db_ingress" {
   subnet_id      = aws_subnet.spoke[each.key].id
 } */
 
-# creates a default route table for the hub VPC and populates routes pointing to each spoke VPC peering as well as to the IGW
-resource "aws_default_route_table" "hub" {
+# creates a route table for the hub untrusted subnet
+resource "aws_route_table" "hub_untrusted" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "hub"
   }
-  default_route_table_id = aws_vpc.main[each.key].default_route_table_id
+  vpc_id = aws_vpc.main[each.key].id
+  dynamic "route" {
+    iterator = vpc_rr
+
+    for_each = [
+      for vpck, vpc in aws_vpc.main :
+      {
+        cidr        = aws_vpc.main[vpck].cidr_block,
+        vpc_peer_id = aws_vpc_peering_connection.main[vpck].id
+      }
+      if vpc.tags.type == "spoke"
+    ]
+
+    content {
+      cidr_block                = vpc_rr.value.cidr
+      vpc_peering_connection_id = vpc_rr.value.vpc_peer_id
+    }
+  }
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.hub.id
+  }
+
+  tags = {
+    Name = "${each.key}_untrusted_main_rt"
+  }
+}
+
+# creates a route table for the hub trusted subnet
+resource "aws_route_table" "hub_trusted" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "hub"
+  }
+  vpc_id = aws_vpc.main[each.key].id
 
   dynamic "route" {
     iterator = vpc_rr
@@ -271,7 +291,7 @@ resource "aws_default_route_table" "hub" {
   }
 
   tags = {
-    Name = "hub_main_rt"
+    Name = "${each.key}_trusted_main_rt"
   }
 }
 

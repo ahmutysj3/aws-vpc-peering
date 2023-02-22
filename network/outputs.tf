@@ -35,16 +35,8 @@ output "igw" {
 }
 
 output "hub_subnets" {
-  value = merge({
-    trusted = {
-      id   = aws_subnet.hub_trusted.id
-      cidr = aws_subnet.hub_trusted.cidr_block
-    }
-    },
-    {
-      untrusted = {
-        id   = aws_subnet.hub_untrusted.id
-        cidr = aws_subnet.hub_untrusted.cidr_block
-      }
-  })
+  value = {for k,v in aws_subnet.hub : v.tags.Name => {
+    id = v.id
+    cidr = v.cidr_block
+  }}
 }
