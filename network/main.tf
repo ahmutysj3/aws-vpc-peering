@@ -274,52 +274,21 @@ resource "aws_route_table" "hub" {
   }
 }
 
-#
-#
-####
-// Note: Need to add another route pointing to pfsense instance once it is deployed
-
-# creates a route table for the hub trusted subnet
-resource "aws_route_table" "hub_trusted" {
-  for_each = {
-    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "hub"
-  }
-  vpc_id = aws_vpc.main[each.key].id
-
-  dynamic "route" {
-    iterator = vpc_rr
-
-    for_each = [
-      for vpck, vpc in aws_vpc.main :
-      {
-        cidr        = aws_vpc.main[vpck].cidr_block,
-        vpc_peer_id = aws_vpc_peering_connection.main[vpck].id
-      }
-      if vpc.tags.type == "spoke"
-    ]
-
-    content {
-      cidr_block                = vpc_rr.value.cidr
-      vpc_peering_connection_id = vpc_rr.value.vpc_peer_id
-    }
-  }
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.hub.id
-  }
-
-  tags = {
-    Name = "${each.key}_trusted_main_rt"
-  }
-}
-
 # associates hub route tables to their subnets
 resource "aws_route_table_association" "hub" {
   for_each = aws_subnet.hub
   subnet_id      = aws_subnet.hub[each.key].id
   route_table_id = aws_route_table.hub[each.key].id
 }
+
+#
+#
+####
+// Note: Need to add another route pointing to pfsense instance once it is deployed
+####
+#
+#
+
 
 # creates a default route table in each spoke VPC and points all traffic to the peering w/ hub VPC
 resource "aws_default_route_table" "spokes" {
