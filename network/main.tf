@@ -49,7 +49,7 @@ resource "aws_subnet" "spoke" {
   for_each                = var.spoke_subnets
   vpc_id                  = aws_vpc.main[each.value.vpc_id].id
   cidr_block              = each.value.cidr
-  map_public_ip_on_launch = each.key == "dmz" || "hub" ? true : false
+  map_public_ip_on_launch = each.key == "dmz" || each.key == "hub" ? true : false
   tags = {
     type = "spoke"
     Name = "${each.key}_subnet"
