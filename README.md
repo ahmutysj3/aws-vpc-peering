@@ -35,6 +35,8 @@ Use of this module/s will require setting up **Terraform AWS Provider & AWS-CLI*
 ## Resources Used
 
 - aws_default_route_table
+- aws_route_table
+- aws_route_table_association
 - aws_internet_gateway
 - aws_network_acl
 - aws_network_acl_association

@@ -314,6 +314,13 @@ resource "aws_route_table" "hub_trusted" {
   }
 }
 
+# associates hub route tables to their subnets
+resource "aws_route_table_association" "hub" {
+  for_each = aws_subnet.hub
+  subnet_id      = aws_subnet.hub[each.key].id
+  route_table_id = aws_route_table.hub[each.key].id
+}
+
 # creates a default route table in each spoke VPC and points all traffic to the peering w/ hub VPC
 resource "aws_default_route_table" "spokes" {
   for_each = {
