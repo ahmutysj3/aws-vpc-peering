@@ -29,7 +29,7 @@ resource "aws_subnet" "hub_trusted" {
   tags = {
     Name     = "hub_trusted_subnet"
     Security = "0"
-    Type = "hub"
+    Type     = "hub"
   }
 }
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "hub_untrusted" {
   tags = {
     Name     = "hub_untrusted_subnet"
     Security = "100"
-    type = "hub"
+    type     = "hub"
   }
 }
 

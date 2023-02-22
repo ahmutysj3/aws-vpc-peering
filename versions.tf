@@ -5,15 +5,15 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "4.35.0"
-    }      
+    }
   }
 
   backend "s3" {
-        bucket = "trace-tf-unlocked-bucket"
-        key    = "main/vpc/terraform.tfstate"
-        region = "us-east-1"
-        #dynamodb_table = "terraform_state"
-      }
+    bucket = "trace-tf-unlocked-bucket"
+    key    = "main/vpc/terraform.tfstate"
+    region = "us-east-1"
+    #dynamodb_table = "terraform_state"
+  }
 }
 
 provider "aws" {
