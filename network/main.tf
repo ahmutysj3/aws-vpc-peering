@@ -120,6 +120,18 @@ resource "aws_security_group_rule" "spoke_egress" {
   cidr_blocks = [aws_vpc.main["hub"].cidr_block]
 }
 
+resource "aws_security_group_rule" "spoke_ingress" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
+  }
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes[each.key].id
+  cidr_blocks = [aws_vpc.main["hub"].cidr_block]
+}
+
 resource "aws_security_group_rule" "dmz_egress" {
   type              = "egress"
   from_port         = 0
