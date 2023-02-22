@@ -234,11 +234,11 @@ resource "aws_security_group_rule" "db_ingress" {
 } */
 
 # associates the default VPC nacl to each subnet
-resource "aws_network_acl_association" "main" {
+/* resource "aws_network_acl_association" "main" {
   for_each       = var.spoke_subnets
   network_acl_id = aws_network_acl.main[each.value.vpc_id].id
   subnet_id      = aws_subnet.spoke[each.key].id
-}
+} */
 
 # creates a default route table for the hub VPC and populates routes pointing to each spoke VPC peering as well as to the IGW
 resource "aws_default_route_table" "hub" {
