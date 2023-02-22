@@ -39,6 +39,7 @@ Use of this module/s will require setting up **Terraform AWS Provider & AWS-CLI*
 - aws_network_acl
 - aws_network_acl_association
 - aws_security_group
+- aws_security_group_rule
 - aws_subnet
 - aws_vpc
 - aws_vpc_peering_connection
