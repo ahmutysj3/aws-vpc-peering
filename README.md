@@ -30,7 +30,7 @@ Use of this module/s will require setting up **Terraform AWS Provider & AWS-CLI*
 
 ### Notes
 
-- The hub subnets will automatically be provisioned as two /25 subnets for inside/outside fw interfaces (the network requires a **Network Virtual Appliance** in the hub for routing)
+- The hub subnets will automatically be provisioned as two /24 subnets for inside/outside fw interfaces (the network requires a **Network Virtual Appliance** in the hub for routing)
 
 ## Resources Used
 
