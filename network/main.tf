@@ -108,6 +108,7 @@ resource "aws_security_group" "spokes" {
   vpc_id      = aws_vpc.main[each.key].id
 }
 
+# builds a rule for each sg allowing outbound to hub vpc
 resource "aws_security_group_rule" "spoke_egress" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
@@ -120,6 +121,7 @@ resource "aws_security_group_rule" "spoke_egress" {
   cidr_blocks = [aws_vpc.main["hub"].cidr_block]
 }
 
+# builds a rule for each sg allowing inbound from hub vpc 
 resource "aws_security_group_rule" "spoke_ingress" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
@@ -132,6 +134,7 @@ resource "aws_security_group_rule" "spoke_ingress" {
   cidr_blocks = [aws_vpc.main["hub"].cidr_block]
 }
 
+# builds sg rule allowing outbound to app vpc
 resource "aws_security_group_rule" "dmz_egress" {
   type              = "egress"
   from_port         = 0
@@ -141,6 +144,7 @@ resource "aws_security_group_rule" "dmz_egress" {
   cidr_blocks = [aws_vpc.main["app"].cidr_block]
 }
 
+# builds sg rule allowing outbound to dmz or db VPCs
 resource "aws_security_group_rule" "app_egress" {
   type              = "egress"
   from_port         = 0
@@ -150,6 +154,7 @@ resource "aws_security_group_rule" "app_egress" {
   cidr_blocks = [aws_vpc.main["db"].cidr_block, aws_vpc.main["dmz"].cidr_block]
 }
 
+# builds sg rule allowing outbound to app VPC
 resource "aws_security_group_rule" "db_egress" {
   type              = "egress"
   from_port         = 0
@@ -159,6 +164,7 @@ resource "aws_security_group_rule" "db_egress" {
   cidr_blocks = [aws_vpc.main["app"].cidr_block]
 }
 
+# builds sg rule allowing inbound from app db and self
 resource "aws_security_group_rule" "dmz_ingress" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" && vpck != "db"
@@ -171,6 +177,7 @@ resource "aws_security_group_rule" "dmz_ingress" {
   cidr_blocks = [aws_vpc.main[each.key].cidr_block]
 }
 
+# builds sg rule allowing inbound from any spoke vpc including self
 resource "aws_security_group_rule" "app_ingress" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" 
@@ -183,9 +190,10 @@ resource "aws_security_group_rule" "app_ingress" {
   cidr_blocks = [aws_vpc.main[each.key].cidr_block]
 }
 
+# builds sg rule allowing inbound from app vpc and self
 resource "aws_security_group_rule" "db_ingress" {
   for_each = {
-    for vpck, vpc in aws_vpc.main : vpck => vpc if vpck == "app"
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"  && vpck != "dmz"
   }
   type              = "ingress"
   from_port         = 0
@@ -195,8 +203,10 @@ resource "aws_security_group_rule" "db_ingress" {
   cidr_blocks = [aws_vpc.main[each.key].cidr_block]
 }
 
+# DEV ONLY NACL
 # creates a default allow all out/allow ssh in nacl in each VPC
-resource "aws_network_acl" "main" {
+
+/* resource "aws_network_acl" "main" {
   for_each = aws_vpc.main
   vpc_id   = aws_vpc.main[each.key].id
 
@@ -221,7 +231,7 @@ resource "aws_network_acl" "main" {
   tags = {
     Name = "${each.key}_main_acl"
   }
-}
+} */
 
 # associates the default VPC nacl to each subnet
 resource "aws_network_acl_association" "main" {
