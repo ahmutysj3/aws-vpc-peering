@@ -98,6 +98,91 @@ resource "aws_security_group" "allow_all" {
   }
 }
 
+# builds a security group for each spoke VPC
+resource "aws_security_group" "spokes" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
+  }
+  name        = "${each.key}_nsg"
+  description = "Network Security Group for ${each.key} VPC"
+  vpc_id      = aws_vpc.main[each.key].id
+}
+
+resource "aws_security_group_rule" "spoke_egress" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
+  }
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes[each.key].id
+  cidr_blocks = [aws_vpc.main["hub"].cidr_block]
+}
+
+resource "aws_security_group_rule" "dmz_egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["dmz"].id
+  cidr_blocks = [aws_vpc.main["app"].cidr_block]
+}
+
+resource "aws_security_group_rule" "app_egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["app"].id
+  cidr_blocks = [aws_vpc.main["db"].cidr_block, aws_vpc.main["dmz"].cidr_block]
+}
+
+resource "aws_security_group_rule" "db_egress" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["db"].id
+  cidr_blocks = [aws_vpc.main["app"].cidr_block]
+}
+
+resource "aws_security_group_rule" "dmz_ingress" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" && vpck != "db"
+  }
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["dmz"].id
+  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+}
+
+resource "aws_security_group_rule" "app_ingress" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" 
+  }
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["app"].id
+  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+}
+
+resource "aws_security_group_rule" "db_ingress" {
+  for_each = {
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpck == "app"
+  }
+  type              = "ingress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "all"
+  security_group_id = aws_security_group.spokes["db"].id
+  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+}
+
 # creates a default allow all out/allow ssh in nacl in each VPC
 resource "aws_network_acl" "main" {
   for_each = aws_vpc.main
