@@ -253,7 +253,6 @@ resource "aws_route_table" "hub" {
   tags = {
     Name = "hub_${each.key}_main_rt"
   }
-}
 
   # each.key == "untrusted" to only apply to hub_untrusted_subnet
   dynamic "route" {
@@ -271,6 +270,7 @@ resource "aws_route_table" "hub" {
     content {
       cidr_block = "0.0.0.0/0"
       gateway_id = aws_internet_gateway.hub.id
+    }
   }
 }
 
