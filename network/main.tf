@@ -1,3 +1,4 @@
+# builds VPCs based on var.vpcs inputs - default is 1 x Hub VPC and 3 x Spoke VPCs
 resource "aws_vpc" "main" {
   for_each         = var.vpcs
   cidr_block       = each.value.cidr
@@ -9,11 +10,13 @@ resource "aws_vpc" "main" {
   }
 }
 
+# local variables for the hub VPC cidr and id
 locals {
   hub_id   = element([for vpck, vpc in aws_vpc.main : vpc.id if vpc.tags.type == "hub"], 0)
   hub_cidr = element([for vpck, vpc in aws_vpc.main : vpc.cidr_block if vpc.tags.type == "hub"], 0)
 }
 
+# builds 1 x IGW for the hub VPC
 resource "aws_internet_gateway" "hub" {
   vpc_id = local.hub_id
   tags = {
@@ -21,6 +24,7 @@ resource "aws_internet_gateway" "hub" {
   }
 }
 
+# builds a subnet for inside interface of firewall
 resource "aws_subnet" "hub_trusted" {
   #availability_zone       = data.aws_availability_zones.available.names[0]
   vpc_id                  = local.hub_id
@@ -33,6 +37,7 @@ resource "aws_subnet" "hub_trusted" {
   }
 }
 
+# builds a subnet for outside interface of firewall
 resource "aws_subnet" "hub_untrusted" {
   #availability_zone       = data.aws_availability_zones.available.names[0]
   vpc_id                  = local.hub_id
@@ -45,6 +50,7 @@ resource "aws_subnet" "hub_untrusted" {
   }
 }
 
+# builds the spoke subnets based on inputs within var.spoke_subnets
 resource "aws_subnet" "spoke" {
   for_each                = var.spoke_subnets
   vpc_id                  = aws_vpc.main[each.value.vpc_id].id
@@ -56,6 +62,7 @@ resource "aws_subnet" "spoke" {
   }
 }
 
+# peers each spoke VPC to the hub VPC
 resource "aws_vpc_peering_connection" "main" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
@@ -69,6 +76,7 @@ resource "aws_vpc_peering_connection" "main" {
   }
 }
 
+# builds a security group that allows all inbound and outbound traffic
 resource "aws_security_group" "allow_all" {
   for_each    = aws_vpc.main
   name        = "allow_all_sg"
@@ -90,6 +98,7 @@ resource "aws_security_group" "allow_all" {
   }
 }
 
+# creates a default allow all in/out nacl in each VPC
 resource "aws_network_acl" "main" {
   for_each = aws_vpc.main
   vpc_id   = aws_vpc.main[each.key].id
@@ -104,7 +113,7 @@ resource "aws_network_acl" "main" {
   }
 
   ingress {
-    protocol   = "tcp"
+    protocol   = "all"
     rule_no    = 100
     action     = "allow"
     cidr_block = "0.0.0.0/0"
@@ -117,20 +126,19 @@ resource "aws_network_acl" "main" {
   }
 }
 
+# associates the default VPC nacl to each subnet
 resource "aws_network_acl_association" "main" {
   for_each       = var.spoke_subnets
   network_acl_id = aws_network_acl.main[each.value.vpc_id].id
   subnet_id      = aws_subnet.spoke[each.key].id
 }
 
+# creates a default route table for the hub VPC and populates routes pointing to each spoke VPC peering as well as to the IGW
 resource "aws_default_route_table" "hub" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "hub"
   }
   default_route_table_id = aws_vpc.main[each.key].default_route_table_id
-  /* depends_on = [
-    aws_vpc_peering_connection.main
-  ] */
 
   dynamic "route" {
     iterator = vpc_rr
@@ -160,6 +168,7 @@ resource "aws_default_route_table" "hub" {
   }
 }
 
+# creates a default route table in each spoke VPC and points all traffic to the peering w/ hub VPC
 resource "aws_default_route_table" "spokes" {
   for_each = {
     for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
