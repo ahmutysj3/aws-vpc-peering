@@ -26,12 +26,12 @@ resource "aws_internet_gateway" "hub" {
 
 # builds a subnet for inside interface of firewall
 resource "aws_subnet" "hub" {
-  for_each = {"trusted" = 0,"untrusted" = 1,"mgmt" = 2}
+  for_each                = { "trusted" = 0, "untrusted" = 1, "mgmt" = 2 }
   vpc_id                  = local.hub_id
   cidr_block              = cidrsubnet(local.hub_cidr, 8, each.value)
   map_public_ip_on_launch = each.value < 1 ? false : true
   tags = {
-    Name     = "hub_${each.key}_subnet"
+    Name = "hub_${each.key}_subnet"
   }
 }
 
@@ -104,7 +104,7 @@ resource "aws_security_group_rule" "spoke_egress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes[each.key].id
-  cidr_blocks = [aws_vpc.main["hub"].cidr_block]
+  cidr_blocks       = [aws_vpc.main["hub"].cidr_block]
 }
 
 # builds a rule for each sg allowing inbound from hub vpc 
@@ -117,7 +117,7 @@ resource "aws_security_group_rule" "spoke_ingress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes[each.key].id
-  cidr_blocks = [aws_vpc.main["hub"].cidr_block]
+  cidr_blocks       = [aws_vpc.main["hub"].cidr_block]
 }
 
 # builds sg rule allowing outbound to app vpc
@@ -127,7 +127,7 @@ resource "aws_security_group_rule" "dmz_egress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["dmz"].id
-  cidr_blocks = [aws_vpc.main["app"].cidr_block]
+  cidr_blocks       = [aws_vpc.main["app"].cidr_block]
 }
 
 # builds sg rule allowing outbound to dmz or db VPCs
@@ -137,7 +137,7 @@ resource "aws_security_group_rule" "app_egress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["app"].id
-  cidr_blocks = [aws_vpc.main["db"].cidr_block, aws_vpc.main["dmz"].cidr_block]
+  cidr_blocks       = [aws_vpc.main["db"].cidr_block, aws_vpc.main["dmz"].cidr_block]
 }
 
 # builds sg rule allowing outbound to app VPC
@@ -147,7 +147,7 @@ resource "aws_security_group_rule" "db_egress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["db"].id
-  cidr_blocks = [aws_vpc.main["app"].cidr_block]
+  cidr_blocks       = [aws_vpc.main["app"].cidr_block]
 }
 
 # builds sg rule allowing inbound from app db and self
@@ -160,33 +160,33 @@ resource "aws_security_group_rule" "dmz_ingress" {
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["dmz"].id
-  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+  cidr_blocks       = [aws_vpc.main[each.key].cidr_block]
 }
 
 # builds sg rule allowing inbound from any spoke vpc including self
 resource "aws_security_group_rule" "app_ingress" {
   for_each = {
-    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" 
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"
   }
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["app"].id
-  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+  cidr_blocks       = [aws_vpc.main[each.key].cidr_block]
 }
 
 # builds sg rule allowing inbound from app vpc and self
 resource "aws_security_group_rule" "db_ingress" {
   for_each = {
-    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke"  && vpck != "dmz"
+    for vpck, vpc in aws_vpc.main : vpck => vpc if vpc.tags.type == "spoke" && vpck != "dmz"
   }
   type              = "ingress"
   from_port         = 0
   to_port           = 65535
   protocol          = "all"
   security_group_id = aws_security_group.spokes["db"].id
-  cidr_blocks = [aws_vpc.main[each.key].cidr_block]
+  cidr_blocks       = [aws_vpc.main[each.key].cidr_block]
 }
 
 # DEV ONLY NACL
@@ -229,8 +229,8 @@ resource "aws_security_group_rule" "db_ingress" {
 # creates a route table for the hub untrusted subnet
 resource "aws_route_table" "hub" {
   for_each = aws_subnet.hub
-  vpc_id = aws_subnet.hub[each.key].vpc_id
-  
+  vpc_id   = aws_subnet.hub[each.key].vpc_id
+
   # each.key == "trusted" to only apply to hub_trusted_subnet
   dynamic "route" {
     iterator = vpc_rr
@@ -276,7 +276,7 @@ resource "aws_route_table" "hub" {
 
 # associates hub route tables to their subnets
 resource "aws_route_table_association" "hub" {
-  for_each = aws_subnet.hub
+  for_each       = aws_subnet.hub
   subnet_id      = aws_subnet.hub[each.key].id
   route_table_id = aws_route_table.hub[each.key].id
 }

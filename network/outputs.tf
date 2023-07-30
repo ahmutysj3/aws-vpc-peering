@@ -35,8 +35,8 @@ output "igw" {
 }
 
 output "hub_subnets" {
-  value = {for k,v in aws_subnet.hub : v.tags.Name => {
-    id = v.id
+  value = { for k, v in aws_subnet.hub : v.tags.Name => {
+    id   = v.id
     cidr = v.cidr_block
-  }}
+  } }
 }

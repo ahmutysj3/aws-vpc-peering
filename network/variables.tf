@@ -9,9 +9,9 @@ variable "vpcs" {
 variable "spoke_subnets" {
   description = "used to build firewall subnets"
   type = map(object({
-    vpc_id  = string
-    cidr    = string
-    mgmt    = bool
+    vpc_id = string
+    cidr   = string
+    mgmt   = bool
   }))
 }
 
